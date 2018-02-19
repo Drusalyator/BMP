@@ -265,17 +265,17 @@ def read_bitmap_version_5_info(picture, info=None):
     return info
 
 
-def get_palette(picture, info: BitMapVersion3Info):
+def get_color_table(picture, info: BitMapVersion3Info):
     """Get palette from picture"""
-    palette = []
+    color_table = []
     for index in range(info.color_used):
         offset = 0x36 + index * 4  # We get palette only for bit count <= 8
         color = picture[offset:offset + 4]
         red = color[0]
         green = color[1]
         blue = color[2]
-        palette.append((red, green, blue))
-    return palette
+        color_table.append((red, green, blue))
+    return color_table
 
 
 def open_picture(picture_name):
