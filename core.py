@@ -176,6 +176,10 @@ def read_bitmap_version_3_info(picture, info=None):
     info.y_pixels_per_meter = unpack('<I', picture[0x2a:0x2a + 4])[0]
     info.color_used = unpack('<I', picture[0x2e:0x2e + 4])[0]
     info.color_important = unpack('<I', picture[0x32:0x32 + 4])[0]
+    if info.color_used == 0 and info.bit_count <= 8:
+        info.color_used = 2 ** info.bit_count
+    if info.color_important == 0:
+        info.color_important = info.color_used
     if info.compression == 3 or info.compression == 6:
         info.red_mask = unpack('<I', file[0x36:0x36 + 4])[0]
         info.green_mask = unpack('<I', file[0x3a:0x3a + 4])[0]
@@ -259,6 +263,19 @@ def read_bitmap_version_5_info(picture, info=None):
     if info.reserved != 0:
         raise ReservedFieldsException('Reserved fields must contain zeros')
     return info
+
+
+def get_palette(picture, info: BitMapVersion3Info):
+    """Get palette from picture"""
+    palette = []
+    for index in range(info.color_used):
+        offset = 0x36 + index * 4  # We get palette only for bit count <= 8
+        color = picture[offset:offset + 4]
+        red = color[0]
+        green = color[1]
+        blue = color[2]
+        palette.append((red, green, blue))
+    return palette
 
 
 def open_picture(picture_name):
