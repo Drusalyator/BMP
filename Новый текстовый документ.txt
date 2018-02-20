@@ -1,0 +1,77 @@
+class DrawingBMP(QtWidgets.QWidget):
+    """Rendering picture on window"""
+
+    def __init__(self, picture, picture_header, picture_info, color_table, perent=None):
+        """Initialize class"""
+        super().__init__(perent)
+        self.picture = picture
+        self.picture_header = picture_header
+        self.picture_info = picture_info
+        self.color_table = color_table
+        self.pixmap = None
+        self.byte_offset = 0
+        self.has_drawn = False
+        self._set_geometry_of_pixmap()
+
+    def _set_geometry_of_pixmap(self):
+        """Set geometry of pixmap"""
+        self.pixel_size = 1
+
+    def paintEvent(self, e):
+        if self.pixmap is not None:
+            self.draw_pixmap()
+            return
+        self.start_rendering()
+        if not self.has_drawn:
+            self.draw_pixmap()
+            self.has_drawn = True
+
+    def draw_pixmap(self):
+        """Draw pixmap with picture"""
+        painter = QtGui.QPainter()
+        painter.begin(self)
+        widget_geometry = self.geometry()
+        painter.drawPixmap((widget_geometry.width() - self.picture_info.width) / 2,
+                           (widget_geometry.height() - self.picture_info.height) / 2,
+                           self.pixmap)
+        painter.end()
+
+    def start_rendering(self):
+        """Start rendering"""
+        self.pixmap = QtGui.QPixmap(self.picture_info.width, self.picture_info.height)
+        painter = QtGui.QPainter()
+        painter.begin(self.pixmap)
+        self.render_picture()
+
+    def render_picture(self, painter):
+        pixel_extractor = self.get_pixels(file)
+        for pixel in pixel_extractor:
+            coord, color = pixel
+            painter.fillRect(*coord, self.pixel_size, self.pixel_size, QtGui.QColor(*color))
+
+    def get_pixels(self):
+        row_number = self.picture_info.height - 1
+        local_pixel_offset = 0
+        pixel_offset = self.picture_header.off_bits
+        while row_number >= 0:
+            color, pixel_offset = self._get_24_bit_color(pixel_offset)
+            x = local_pixel_offset * pixel_size
+            y = row_number * pixel_size
+            yield (x, y), color
+            local_pixel_offset += 1
+            if local_pixel_offset >= self.picture_info.width:
+                total_offset = pixel_offset - self.picture_header.offset
+                while total_offset % 4 != 0:
+                    local_pixel_offset += 1
+                    pixel_offset += 1
+                    total_offset += 1
+                row_number -= 1
+                local_pixel_offset = 0
+                self.byte_offset = 0
+
+    def _get_24_bit_color(self, offset):
+        blue = unpack('B', self.picture[offset:offset + 1])[0]
+        green = unpack('B', self.picture[offset + 1:offset + 2])[0]
+        red = unpack('B', self.picture[offset + 2:offset + 3])[0]
+        return (red, green, blue), offset + 3
+"""
