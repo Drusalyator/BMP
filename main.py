@@ -36,11 +36,16 @@ def input_picture_name():
 
 def console_version(picture_name):
     """Run console version of program"""
-    picture = open_picture(picture_name)
-    picture_header = read_bitmap_file_header(picture)
-    bitmap_info = select_info(picture, picture_header)
-    print(picture_header)
-    print(bitmap_info)
+    try:
+        picture = open_picture(picture_name)
+        picture_header = read_bitmap_file_header(picture)
+        bitmap_info = select_info(picture, picture_header)
+    except Exception as e:
+        print("Error".format(e))
+        sys.exit()
+    else:
+        print(picture_header)
+        print(bitmap_info)
 
 
 def graphical_version(picture_name):
@@ -63,7 +68,7 @@ def main():
                 picture_name = input_picture_name()
             console_version(picture_name)
     except Exception as e:
-        print("Error! " + str(e))
+        print("Error! ".format(e))
 
 
 if __name__ == '__main__':

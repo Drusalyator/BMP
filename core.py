@@ -1,5 +1,4 @@
 """Module that implements the reading data of the program"""
-
 from struct import unpack
 
 

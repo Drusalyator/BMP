@@ -1,6 +1,5 @@
 """This file implements the graphical version of program"""
 import sys
-import logging
 import math
 from core import *
 from PyQt5 import QtWidgets
@@ -56,7 +55,7 @@ class Window(QtWidgets.QMainWindow):
             picture_name = QtWidgets.QFileDialog.getOpenFileName(self, "Load picture", filter="Data (*.bmp)")[0]
             self.picture_name = picture_name
         try:
-            with open(self.picture_name, 'rb') as file:
+            with open(self.picture_name, 'rb'):
                 self.picture = open_picture(self.picture_name)
                 self.picture_header = read_bitmap_file_header(self.picture)
                 self.picture_info = select_info(self.picture, self.picture_header)
@@ -94,7 +93,6 @@ class BmpRenderer(QtWidgets.QWidget):
         self.byte_count = bitmap_info.bit_count / 8 if bitmap_info.bit_count >= 8 else 1
         self.color_table = color_table
         self.byte_offset = 0
-        self.render_explicitly()
 
     def paintEvent(self, e):
         if self.pixmap_cache is not None:
@@ -123,18 +121,18 @@ class BmpRenderer(QtWidgets.QWidget):
         self.render_picture(qp, self.file, 1)
         qp.end()
 
-    def render_picture(self, qp: QtGui.QPainter, file, pixel_size):
-        pixel_extractor = self.get_pixels(file, pixel_size)
+    def render_picture(self, painter):
+        pixel_extractor = self.get_pixels()
         for pixel in pixel_extractor:
             coord, color = pixel
-            qp.fillRect(*coord, pixel_size, pixel_size, QtGui.QColor(*color))
+            painter.fillRect(*coord, pixel_size, pixel_size, QtGui.QColor(*color))
 
-    def get_pixels(self, file: bytes, pixel_size):
+    def get_pixels(self, pixel_size=1):
         row_number = self.bitmap_info.height - 1
         local_pixel_offset = 0
         pixel_offset = self.header.off_bits
         while row_number >= 0:
-            color, pixel_offset = self.get_24_bit_color(file, pixel_offset)
+            color, pixel_offset = self.get_24_bit_color(pixel_offset)
             x = local_pixel_offset * pixel_size
             y = row_number * pixel_size
             yield (x, y), color
@@ -149,10 +147,10 @@ class BmpRenderer(QtWidgets.QWidget):
                 local_pixel_offset = 0
                 self.byte_offset = 0
 
-    def get_24_bit_color(self, file, offset):
-        blue = unpack('B', file[offset:offset + 1])[0]
-        green = unpack('B', file[offset + 1:offset + 2])[0]
-        red = unpack('B', file[offset + 2:offset + 3])[0]
+    def get_24_bit_color(self, offset):
+        blue = unpack('B', self.file[offset:offset + 1])[0]
+        green = unpack('B', self.file[offset + 1:offset + 2])[0]
+        red = unpack('B', self.file[offset + 2:offset + 3])[0]
         return (red, green, blue), offset + 3
 
 
