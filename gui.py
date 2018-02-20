@@ -90,7 +90,6 @@ class DrawBMP(QtWidgets.QWidget):
         self.color_table = color_table
         self.pixmap = None
         self.ready = False
-        self.byte_count = picture_info.bit_count / 8 if picture_info.bit_count >= 8 else 1
         self.byte_offset = 0
         self.get_pixels_color = {1: self._less_then_8_bit_color, 2: self._less_then_8_bit_color,
                                  4: self._less_then_8_bit_color, 8: self._8_bit_color, 24: self._24_bit_color}
