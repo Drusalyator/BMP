@@ -269,10 +269,10 @@ def get_color_table(picture, info: BitMapVersion3Info):
     color_table = []
     for index in range(info.color_used):
         offset = 0x36 + index * 4  # We get palette only for bit count <= 8
-        color = picture[offset:offset + 4]
-        red = color[0]
+        color = picture[offset:offset + 3]
+        red = color[2]
         green = color[1]
-        blue = color[2]
+        blue = color[0]
         color_table.append((red, green, blue))
     return color_table
 

@@ -1,6 +1,5 @@
 """This file implements the graphical version of program"""
 import sys
-import math
 from core import *
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
@@ -65,7 +64,7 @@ class Window(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Error", "Error: {}".format(exception), QtWidgets.QMessageBox.Ok)
             sys.exit("Incorrect picture")
         else:
-            self.renderer = BmpRenderer(self.picture, self.picture_header, self.picture_info, self.color_table)
+            self.renderer = DrawBMP(self.picture, self.picture_header, self.picture_info, self.color_table)
             self.setCentralWidget(self.renderer)
             self.showMaximized()
             self._show_table_info(self.picture_header, self.picture_info)
@@ -81,77 +80,96 @@ class Window(QtWidgets.QMainWindow):
             self.table_info.show()
 
 
-class BmpRenderer(QtWidgets.QWidget):
-    def __init__(self, file, header, bitmap_info, color_table, parent=None):
-        QtWidgets.QWidget.__init__(self, parent)
-        self.pixmap_cache = None
-        self.has_drawn = False
-        self.min_size = 300
-        self.bitmap_info = bitmap_info
-        self.file = file
-        self.header = header
-        self.byte_count = bitmap_info.bit_count / 8 if bitmap_info.bit_count >= 8 else 1
+class DrawBMP(QtWidgets.QWidget):
+    """Class drawing BMP"""
+    def __init__(self, picture, picture_header, picture_info, color_table):
+        super().__init__()
+        self.picture = picture
+        self.picture_header = picture_header
+        self.picture_info = picture_info
         self.color_table = color_table
+        self.pixmap = None
+        self.ready = False
+        self.byte_count = picture_info.bit_count / 8 if picture_info.bit_count >= 8 else 1
         self.byte_offset = 0
+        self.get_pixels_color = {1: self._less_then_8_bit_color, 2: self._less_then_8_bit_color,
+                                 4: self._less_then_8_bit_color, 8: self._8_bit_color, 24: self._24_bit_color}
 
-    def paintEvent(self, e):
-        if self.pixmap_cache is not None:
-            self.draw_cached_picture()
-            return
-        self.render_explicitly()
-        if not self.has_drawn:
-            self.draw_cached_picture()
-            self.has_drawn = True
+    def _rendering(self):
+        """Start rendering the picture"""
+        self.pixmap = QtGui.QPixmap(self.picture_info.width, self.picture_info.height)
+        painter = QtGui.QPainter()
+        painter.begin(self.pixmap)
+        pixel_iterator = self._pixels_iterator()
+        for pixel in pixel_iterator:
+            coordinates = pixel[0]
+            color = pixel[1]
+            painter.fillRect(*coordinates, 1, 1, QtGui.QColor(*color))
+        painter.end()
 
-    def draw_cached_picture(self):
-        qp = QtGui.QPainter()
-        geom = self.geometry()
-        qp.begin(self)
-        qp.resetTransform()
-        qp.drawPixmap((geom.width() - self.bitmap_info.width) / 2,
-                      (geom.height() - self.bitmap_info.height) / 2,
-                      self.pixmap_cache)
-        qp.end()
-
-    def render_explicitly(self):
-        self.pixmap_cache = QtGui.QPixmap(self.bitmap_info.width, self.bitmap_info.height)
-        self.pixmap_cache.fill(QtCore.Qt.transparent)
-        qp = QtGui.QPainter()
-        qp.begin(self.pixmap_cache)
-        self.render_picture(qp, self.file, 1)
-        qp.end()
-
-    def render_picture(self, painter):
-        pixel_extractor = self.get_pixels()
-        for pixel in pixel_extractor:
-            coord, color = pixel
-            painter.fillRect(*coord, pixel_size, pixel_size, QtGui.QColor(*color))
-
-    def get_pixels(self, pixel_size=1):
-        row_number = self.bitmap_info.height - 1
-        local_pixel_offset = 0
-        pixel_offset = self.header.off_bits
-        while row_number >= 0:
-            color, pixel_offset = self.get_24_bit_color(pixel_offset)
-            x = local_pixel_offset * pixel_size
-            y = row_number * pixel_size
+    def _pixels_iterator(self):
+        """Get pixels iterator"""
+        row = self.picture_info.height - 1
+        local_offset = 0
+        offset = self.picture_header.off_bits
+        while row >= 0:
+            color, offset = self.get_pixels_color.get(self.picture_info.bit_count)(offset)
+            x = local_offset
+            y = row
             yield (x, y), color
-            local_pixel_offset += 1
-            if local_pixel_offset >= self.bitmap_info.width:
-                total_offset = pixel_offset - self.header.off_bits
+            local_offset += 1
+            if local_offset >= self.picture_info.width:
+                total_offset = offset - self.picture_header.off_bits
                 while total_offset % 4 != 0:
-                    local_pixel_offset += 1
-                    pixel_offset += 1
+                    offset += 1
                     total_offset += 1
-                row_number -= 1
-                local_pixel_offset = 0
+                row -= 1
+                local_offset = 0
                 self.byte_offset = 0
 
-    def get_24_bit_color(self, offset):
-        blue = unpack('B', self.file[offset:offset + 1])[0]
-        green = unpack('B', self.file[offset + 1:offset + 2])[0]
-        red = unpack('B', self.file[offset + 2:offset + 3])[0]
+    def _less_then_8_bit_color(self, offset):
+        """Get less then 8 bit color"""
+        if self.byte_offset == 8:
+            offset += 1
+            self.byte_offset = 0
+        if self.byte_offset == 0:
+            self.byte = '{:08b}'.format(unpack('B', self.picture[offset:offset + 1])[0])
+        index_in_color_table = int(self.byte[self.byte_offset:self.byte_offset + self.picture_info.bit_count], 2)
+        self.byte_offset += self.picture_info.bit_count
+        color = self.color_table[index_in_color_table]
+        return color, offset
+
+    def _8_bit_color(self, offset):
+        """Get 8 bit color"""
+        index_in_color_table = unpack('B', self.picture[offset:offset + 1])[0]
+        color = self.color_table[index_in_color_table]
+        return color, offset + 1
+
+    def _24_bit_color(self, offset):
+        blue = unpack('B', self.picture[offset:offset + 1])[0]
+        green = unpack('B', self.picture[offset + 1:offset + 2])[0]
+        red = unpack('B', self.picture[offset + 2:offset + 3])[0]
         return (red, green, blue), offset + 3
+
+    def paintEvent(self, event):
+        """Paint event"""
+        if self.pixmap is not None:
+            self._draw_pixmap()
+            return
+        self._rendering()
+        if not self.ready:
+            self._draw_pixmap()
+            self.ready = True
+
+    def _draw_pixmap(self):
+        """Draw ready pixmap"""
+        painter = QtGui.QPainter()
+        geometry = self.geometry()
+        painter.begin(self)
+        painter.drawPixmap((geometry.width() - self.picture_info.width) / 2,
+                           (geometry.height() - self.picture_info.height) / 2,
+                           self.pixmap)
+        painter.end()
 
 
 class TableInfo(QtWidgets.QWidget):
