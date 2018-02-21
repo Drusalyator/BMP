@@ -16,7 +16,7 @@ This application parses structure of BMP file. In the console version displays o
 ## Composition
 
 - Logic of program: `core.py`
-- Pictures for tests: `\tests_image`
+- Pictures for tests: `\tests_image`   #test image. it's not open
 - Tests: `tests.py`
 - Entry point `main.py`
 - gui: `gui.py`

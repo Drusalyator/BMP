@@ -25,6 +25,8 @@ class Window(QtWidgets.QMainWindow):
         self.table_info.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.table_info.move(30, 100)
 
+        self.histogram = Histogram()
+
         menu = self.menuBar()
         picture_menu = menu.addMenu("Picture")
 
@@ -38,16 +40,35 @@ class Window(QtWidgets.QMainWindow):
             lambda: self.table_info.show() if self.table_info.isHidden() else self.table_info.hide())
 
         show_red_histogram = QtWidgets.QAction("Red histogram", self)
+        show_red_histogram.triggered.connect(
+            lambda: self._show_histogram(self.renderer.red_histogram))
         show_green_histogram = QtWidgets.QAction("Green histogram", self)
+        show_green_histogram.triggered.connect(
+            lambda: self._show_histogram(self.renderer.green_histogram))
         show_blue_histogram = QtWidgets.QAction("Blue histogram", self)
+        show_blue_histogram.triggered.connect(
+            lambda: self._show_histogram(self.renderer.blue_histogram))
+        show_general_histogram = QtWidgets.QAction("General histogram", self)
+        show_general_histogram.triggered.connect(
+            lambda: self._show_histogram(self.renderer.general_histogram))
 
         picture_menu.addAction(show_info)
         picture_menu.addAction(show_red_histogram)
         picture_menu.addAction(show_green_histogram)
         picture_menu.addAction(show_blue_histogram)
+        picture_menu.addAction(show_general_histogram)
         picture_menu.addAction(close_app)
 
         self.hide()
+
+    def _show_histogram(self, histogram_array):
+        """Show histogram"""
+        self.histogram.draw_histogram(histogram_array)
+        if self.histogram.isHidden():
+            self.histogram.show()
+        else:
+            self.histogram.hide()
+            self.histogram.show()
 
     def _get_picture_structure(self, picture_name=None):
         """Get information about picture"""
@@ -262,6 +283,50 @@ class TableInfo(QtWidgets.QWidget):
             counter = self._add_info_in_row(info, counter)
         for info in picture_info:
             counter = self._add_info_in_row(info, counter)
+
+
+class Histogram(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
+        self.pixmap = None
+        self.ready = False
+        self.setFixedSize(530, 320)
+        self.hide()
+
+    def draw_histogram(self, histogram_array):
+        self.ready = False
+        self.pixmap = None
+        self.pixmap = QtGui.QPixmap(512, 300)
+        self.pixmap.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter()
+        painter.begin(self.pixmap)
+        maximum = 0
+        for point in histogram_array:
+            if point > maximum:
+                maximum = point
+        if maximum > 250:
+            factor = maximum / 250
+        else:
+            factor = 1
+        painter.fillRect(0, 298, 512, 2, QtGui.QColor(0, 0, 0))
+        for index in range(len(histogram_array)):
+            height = int(histogram_array[index] / factor)
+            painter.fillRect(index * 2, 298 - height, 2, height, QtGui.QColor(0, 0, 255))
+        painter.end()
+
+    def _draw_pixmap(self):
+        """Draw ready pixmap"""
+        painter = QtGui.QPainter()
+        geometry = self.geometry()
+        painter.begin(self)
+        painter.drawPixmap((geometry.width() - 512) / 2, (geometry.height() - 300) / 2, self.pixmap)
+        painter.end()
+
+    def paintEvent(self, event):
+        """Paint event"""
+        if self.pixmap is not None:
+            self._draw_pixmap()
+            return
 
 
 if __name__ == '__main__':
