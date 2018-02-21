@@ -1,5 +1,6 @@
 """This file implements the graphical version of program"""
 import sys
+import math
 from core import *
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
@@ -91,19 +92,52 @@ class DrawBMP(QtWidgets.QWidget):
         self.pixmap = None
         self.ready = False
         self.byte_offset = 0
+        self.all_bit_count = [1, 2, 4, 8, 24]
         self.get_pixels_color = {1: self._less_then_8_bit_color, 2: self._less_then_8_bit_color,
                                  4: self._less_then_8_bit_color, 8: self._8_bit_color, 24: self._24_bit_color}
+        self._init_histograms_data()
+
+    def _init_histograms_data(self):
+        """Init histogram data"""
+        self.red_histogram = []
+        self._add_array(self.red_histogram)
+        self.green_histogram = []
+        self._add_array(self.green_histogram)
+        self.blue_histogram = []
+        self._add_array(self.blue_histogram)
+        self.general_histogram = []
+        self._add_array(self.general_histogram)
+
+    @staticmethod
+    def _add_array(array):
+        """Fill array in gistogram data"""
+        for index in range(256):
+            array.append(0)
+
+    def _update_histogram_data(self, color):
+        """Update histogram data"""
+        red_color = color[0]
+        self.red_histogram[red_color] += 1
+        green_color = color[1]
+        self.green_histogram[green_color] += 1
+        blue_color = color[2]
+        self.blue_histogram[blue_color] += 1
+        pixel_brightness = math.floor(0.299 * red_color + 0.587 * green_color + 0.114 * blue_color)
+        self.general_histogram[pixel_brightness] += 1
 
     def _rendering(self):
         """Start rendering the picture"""
         self.pixmap = QtGui.QPixmap(self.picture_info.width, self.picture_info.height)
         painter = QtGui.QPainter()
         painter.begin(self.pixmap)
-        pixel_iterator = self._pixels_iterator()
-        for pixel in pixel_iterator:
-            coordinates = pixel[0]
-            color = pixel[1]
-            painter.fillRect(*coordinates, 1, 1, QtGui.QColor(*color))
+        if self.picture_info.bit_count in self.all_bit_count:
+            pixel_iterator = self._pixels_iterator()
+            for pixel in pixel_iterator:
+                coordinates = pixel[0]
+                color = pixel[1]
+                painter.fillRect(*coordinates, 1, 1, QtGui.QColor(*color))
+        else:
+            raise BitCountFieldException("This bit count not supported")
         painter.end()
 
     def _pixels_iterator(self):
@@ -115,6 +149,7 @@ class DrawBMP(QtWidgets.QWidget):
             color, offset = self.get_pixels_color.get(self.picture_info.bit_count)(offset)
             x = local_offset
             y = row
+            self._update_histogram_data(color)
             yield (x, y), color
             local_offset += 1
             if local_offset >= self.picture_info.width:
@@ -155,7 +190,10 @@ class DrawBMP(QtWidgets.QWidget):
         if self.pixmap is not None:
             self._draw_pixmap()
             return
-        self._rendering()
+        try:
+            self._rendering()
+        except BitCountFieldException as exception:
+            QtWidgets.QMessageBox.warning(self, "Error", "{}".format(exception), QtWidgets.QMessageBox.Ok)
         if not self.ready:
             self._draw_pixmap()
             self.ready = True
