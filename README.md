@@ -16,7 +16,8 @@ This application parses structure of BMP file. In the console version displays o
 ## Composition
 
 - Logic of program: `core.py`
-- Tests: `\tests`
+- Pictures for tests: `\tests_image`
+- Tests: `tests.py`
 - Entry point `main.py`
 - gui: `gui.py`
 
@@ -33,5 +34,7 @@ Start-up example python `python main.py` or with file `python main.py -f FILENAM
 
 Code coverage of the code
 
-`core.py       138      2       99%`
+`core.py       228     44       81%`
+
+Get help about program `python main.py -h`
 

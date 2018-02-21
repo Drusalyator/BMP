@@ -41,7 +41,7 @@ def console_version(picture_name):
         picture_header = read_bitmap_file_header(picture)
         bitmap_info = select_info(picture, picture_header)
     except Exception as e:
-        print("Error".format(e))
+        print("Error: {}".format(e))
         sys.exit()
     else:
         print(picture_header)

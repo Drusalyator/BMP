@@ -73,8 +73,7 @@ class BitMapCoreInfo:
         return result
 
     def __eq__(self, other):
-        return self.version == other.version and self.structure_size == other.structure_size \
-               and self.width == other.width and self.height == other.height \
+        return self.version == other.version and self.width == other.width and self.height == other.height \
                and self.planes == other.planes and self.bit_count == other.bit_count
 
 
@@ -180,10 +179,10 @@ def read_bitmap_version_3_info(picture, info=None):
     if info.color_important == 0:
         info.color_important = info.color_used
     if info.compression == 3 or info.compression == 6:
-        info.red_mask = unpack('<I', file[0x36:0x36 + 4])[0]
-        info.green_mask = unpack('<I', file[0x3a:0x3a + 4])[0]
-        info.blue_mask = unpack('<I', file[0x3e:0x3e + 4])[0]
-        info.alpha_mask = unpack('<I', file[0x42:0x42 + 4])[0]
+        info.red_mask = unpack('<I', picture[0x36:0x36 + 4])[0]
+        info.green_mask = unpack('<I', picture[0x3a:0x3a + 4])[0]
+        info.blue_mask = unpack('<I', picture[0x3e:0x3e + 4])[0]
+        info.alpha_mask = unpack('<I', picture[0x42:0x42 + 4])[0]
     return info
 
 
@@ -288,6 +287,21 @@ def select_info(picture, file_header):
     return ACTIONS_FOR_VERSION.get(file_header.version)(picture)
 
 
+PICTURE_VERSION = {
+    12: 'CORE',
+    40: 3,
+    108: 4,
+    124: 5
+}
+
+ACTIONS_FOR_VERSION = {
+    'CORE': read_bitmap_core_info,
+    3: read_bitmap_version_3_info,
+    4: read_bitmap_version_4_info,
+    5: read_bitmap_version_5_info
+}
+
+
 class TypePictureException(Exception):
     """An error occurred while parsing the TYPE field"""
     pass
@@ -316,18 +330,3 @@ class BitCountFieldException(Exception):
 class CompressionFieldException(Exception):
     """An error occurred while parsing the COMPRESSION field"""
     pass
-
-
-PICTURE_VERSION = {
-    12: 'CORE',
-    40: 3,
-    108: 4,
-    124: 5
-}
-
-ACTIONS_FOR_VERSION = {
-    'CORE': read_bitmap_core_info,
-    3: read_bitmap_version_3_info,
-    4: read_bitmap_version_4_info,
-    5: read_bitmap_version_5_info
-}

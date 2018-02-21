@@ -122,7 +122,7 @@ class DrawBMP(QtWidgets.QWidget):
         self.green_histogram[green_color] += 1
         blue_color = color[2]
         self.blue_histogram[blue_color] += 1
-        pixel_brightness = math.floor(0.299 * red_color + 0.587 * green_color + 0.114 * blue_color)
+        pixel_brightness = int(math.floor(0.299 * red_color + 0.587 * green_color + 0.114 * blue_color))
         self.general_histogram[pixel_brightness] += 1
 
     def _rendering(self):
